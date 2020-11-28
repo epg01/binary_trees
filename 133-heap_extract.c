@@ -1,156 +1,159 @@
 #include "binary_trees.h"
+
 /**
- * enqueue2 - insert a node at the end
- * @head: head of queue
- * @node: node to insert
- * Return: pointer to newly created list element or NULL on failure
- */
-queue_t *enqueue2(queue_t **head, const binary_tree_t *node)
+* swap - swaps two numbers
+* @num1: first number
+* @num2: second number
+* Return: nothing
+**/
+void swap(int *num1, int *num2)
 {
-	queue_t *new, *tmp;
+	int tmp;
+
+	tmp = *num1;
+	*num1 = *num2;
+	*num2 = tmp;
+}
+
+/**
+* adding_in_end - adds a new node at the end of the queue
+* @head: double pointer to head of queue
+* @node: pointer to binary tree node for adding to queue
+* Return: pointer to new node of queue, or NULL
+**/
+queue *adding_in_end(queue **head, binary_tree_t *node)
+{
+	queue *tmp, *cur;
 
 	if (!node)
-		return (NULL); /*do not insert a null value*/
-
-	if (!head)
-		return (NULL); /*edge case we should not meet here*/
-
-	new = malloc(sizeof(queue_t));
-	if (!new)
+		return (NULL);
+	tmp = malloc(sizeof(queue));
+	if (!tmp)
 	{
 		while (*head)
 		{
-			tmp = *head;
+			cur = *head;
 			*head = (*head)->next;
-			free(tmp);
+			free(cur);
 		}
+		head = NULL;
 		return (NULL);
 	}
-
-	new->node = (binary_tree_t *)node;
-	new->next = NULL;
+	tmp->node = node;
+	tmp->next = NULL;
 	if (!*head)
-	{
-		*head = new;
-	}
+		*head = tmp;
 	else
 	{
-		tmp = *head;
-		while (tmp->next)
-			tmp = tmp->next;
-		tmp->next = new;
+		cur = *head;
+		while (cur->next)
+			cur = cur->next;
+		cur->next = tmp;
 	}
-	return (new);
+	return (cur);
 }
 
 /**
- * dequeue2 - return a node from the beginning
- * @head: head of queue
- * Return: a pointer to a binary tree node
- */
-binary_tree_t *dequeue2(queue_t **head)
+* removing_front - removes first node of queue
+* @head: double pointer to head of queue
+* Return: first node
+**/
+binary_tree_t *removing_front(queue **head)
 {
-	queue_t *tmp;
+	queue *tmp;
 	binary_tree_t *node;
 
-	if (!head || !*head)
+	if (!*head)
 		return (NULL);
-
 	tmp = *head;
-	*head = tmp->next;
+	*head = (*head)->next;
 	node = tmp->node;
 	free(tmp);
-
 	return (node);
 }
-/**
- * heapify_downward - basically performs a binary search downward
- * and swaps when parent < child
- * @tree: ptr to root
- */
-void heapify_downward(heap_t *tree)
-{
-	int temp;
 
-	if (!tree || !(tree->right || tree->left))
-		return;
-	else if (!(tree->right))
-	{
-		if (tree->left->n > tree->n)
-		{
-			temp = tree->n;
-			tree->n = tree->left->n;
-			tree->left->n = temp;
-			heapify_downward(tree->left);
-			return;
-		}
-	}
-	else
-	{
-		if (tree->left->n > tree->right->n && tree->n < tree->left->n)
-		{
-			temp = tree->n;
-			tree->n = tree->left->n;
-			tree->left->n = temp;
-			heapify_downward(tree->left);
-			return;
-		}
-		if (tree->left->n < tree->right->n && tree->n < tree->right->n)
-		{
-			temp = tree->n;
-			tree->n = tree->right->n;
-			tree->right->n = temp;
-			heapify_downward(tree->right);
-			return;
-		}
-	}
-}
 /**
- * heap_extract - takes out "last" node and updates root
- * basically, removes root of a max binary heap
- * @root: ptr to root
- * Return: value of root
- */
+* heapify_down - restores the max heap property of max binary heap tree,
+* by percolate down
+* @new_node: pointer to new node
+* Return: pointer to new root after restoring heap property
+**/
+heap_t *heapify_down(heap_t *new_node)
+{
+	heap_t *cur = new_node;
+
+	while (new_node)
+	{
+		/* either can have two nodes or left */
+		if (new_node->left)
+		{
+			/* if right node */
+			if ((new_node->right) &&
+			    (new_node->right->n > new_node->left->n) &&
+			    (new_node->right->n > new_node->n))
+			{
+				swap(&new_node->right->n, &new_node->n);
+				cur = new_node->right;
+				new_node = new_node->right;
+				continue;
+			}
+			else if (new_node->left->n > new_node->n)
+			{
+				swap(&new_node->left->n, &new_node->n);
+				cur = new_node->left;
+			}
+		}
+		new_node = new_node->left;
+	}
+	return (cur);
+}
+
+/**
+* heap_extract - extracts the root node of a Max Binary Heap
+* root node is freed and replaced with last node
+* @root: a double pointer to the root node of heap
+* Return: the value stored in the root node or 0 if fails
+**/
 int heap_extract(heap_t **root)
 {
-	queue_t *queue;
-	binary_tree_t *temp;
-	int value;
+	binary_tree_t *cur;
+	int tmp;
+	queue *l_queue = NULL;
 
+	if (!root)
+		return (0);
 	if (!(*root))
 		return (0);
-	queue = NULL;
-	enqueue2(&queue, *root);
-	while (queue)
+
+	tmp = (*root)->n;
+
+	/* create a list of nodes with level order traversal */
+	adding_in_end(&l_queue, *root);
+	while (l_queue)
 	{
-		temp = dequeue2(&queue);
-		enqueue2(&queue, temp->left);
-		enqueue2(&queue, temp->right);
+		cur = removing_front(&l_queue);
+		adding_in_end(&l_queue, cur->left);
+		adding_in_end(&l_queue, cur->right);
 	}
-	if (temp->parent)
-	{
-		if (temp->parent->left == temp)
-			temp->parent->left = NULL;
-		else
-			temp->parent->right = NULL;
-	}
-	temp->parent = NULL;
-	temp->right = (*root)->right;
-	if (temp->right)
-		temp->right->parent = temp;
-	temp->left = (*root)->left;
-	if (temp->left)
-		temp->left->parent = temp;
-	value = (*root)->n;
-	if (*root == temp)
+	/* if root is the node to be deleted */
+	if (*root == cur)
 	{
 		free(*root); *root = NULL;
+		root = NULL;
 	}
+	/* swap with root node value with last nodde */
 	else
 	{
-		free(*root);
-		*root = temp;
-		heapify_downward(temp);
+		(*root)->n = cur->n;
+		if (cur->parent)
+		{
+			if (cur == cur->parent->left)
+				cur->parent->left = NULL;
+			else
+				cur->parent->right = NULL;
+		}
+		free(cur); cur = NULL;
+		heapify_down(*root);
 	}
-	return (value);
+	return (tmp);
 }
