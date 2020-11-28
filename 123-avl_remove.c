@@ -1,205 +1,206 @@
 #include "binary_trees.h"
-
 /**
- * check_balance_avl - checks the balance of each node
- *
- * @node: pointer to the node
- * @value: input value
- * Return: no return
+ * rotation - rotates to the right or left using previous function
+ * @last: pointer to the node to be rotated
+ * @tree: pointer to the root
+ * @flag_right: if 1 the rotation is to the right else left
+ * Return: pointer to the root of the new subtree
  */
-void check_balance_avl(avl_t **node, int value)
+avl_t *rotation(avl_t **tree, avl_t *last, int flag_right)
 {
-	int balance;
+	avl_t *n_parent;
 
-	balance = binary_tree_balance(*node);
-
-	if (balance > 1 && value > (*node)->left->n)
+	if (flag_right)
 	{
-		*node = binary_tree_rotate_right(*node);
-		return;
-	}
-
-	if (balance < -1 && value < (*node)->right->n)
-	{
-		*node = binary_tree_rotate_left(*node);
-		return;
-	}
-
-	if (balance > 1 && value < (*node)->left->n)
-	{
-		(*node)->left = binary_tree_rotate_left((*node)->left);
-		*node = binary_tree_rotate_right(*node);
-		return;
-	}
-
-	if (balance < -1 && value > (*node)->right->n)
-	{
-		(*node)->right = binary_tree_rotate_right((*node)->right);
-		*node = binary_tree_rotate_left(*node);
-		return;
-	}
-}
-
-/**
- * inorder_sucessor - determines the next/previous node of the removed node
- *
- * @tree: pointer to the node
- * @mode: 1 for inorder sucessor, 2 for inorder precessor
- * Return: pointer to the next/previous node
- */
-avl_t *inorder_sucessor(avl_t *tree, int mode)
-{
-	avl_t *node;
-
-	if (mode == 1)
-	{
-		if (tree->left == NULL)
+		if (!last->parent)
 		{
-			if (tree == tree->parent->left)
-				tree->parent->left = NULL;
-			else
-				tree->parent->right = NULL;
-
-			return (tree);
+			*tree = binary_tree_rotate_right(last);
+			return (*tree);
 		}
 
-		node = inorder_sucessor(tree->left, 1);
+		n_parent = last->parent;
+		last->parent = NULL;
+		last = binary_tree_rotate_right(last);
+		last->parent = n_parent;
+		if (last->n < n_parent->n)
+			n_parent->left = last;
+		else
+			n_parent->right = last;
 	}
 	else
 	{
-		if (tree->right == NULL)
+		if (!last->parent)
 		{
-			if (tree == tree->parent->right)
-				tree->parent->right = NULL;
-			else
-				tree->parent->left = NULL;
-
-			return (tree);
+			*tree = binary_tree_rotate_left(last);
+			return (*tree);
 		}
 
-		node = inorder_sucessor(tree->right, 2);
-	}
-
-	return (node);
-}
-
-/**
- * change_node - changes the removed node by the next/previous node
- *
- * @arg_tree: pointer to the removed node
- * @arg_node: poitner to the next/previous node
- * Return: no return
- */
-void change_node(avl_t **arg_tree, avl_t **arg_node)
-{
-	avl_t *put_node, *tree;
-
-	put_node = *arg_node;
-	tree = *arg_tree;
-
-	if (tree->left && tree->left != put_node)
-	{
-		if (put_node->left)
-		{
-			put_node->parent->right = put_node->left;
-			put_node->left->parent = put_node->parent;
-		}
-
-		put_node->left = tree->left;
-		tree->left->parent = put_node;
-	}
-	if (tree->right && tree->right != put_node)
-	{
-		if (put_node->right)
-		{
-			put_node->parent->left = put_node->right;
-			put_node->right->parent = put_node->parent;
-		}
-
-		put_node->right = tree->right;
-		tree->right->parent = put_node;
-	}
-
-	put_node->parent = tree->parent;
-
-	if (tree->parent)
-	{
-		if (tree->parent->left == tree)
-			tree->parent->left = put_node;
+		n_parent = last->parent;
+		last->parent = NULL;
+		last = binary_tree_rotate_left(last);
+		last->parent = n_parent;
+		if (last->n < n_parent->n)
+			n_parent->left = last;
 		else
-			tree->parent->right = put_node;
+			n_parent->right = last;
 	}
-
-	*arg_tree = tree;
-	*arg_node = put_node;
+	return (last);
 }
-
-
 /**
- * avl_search_remove - searches to remove a node in an AVL tree
+ * balance_check_avl - check the balance and calls rotation if necessary
  *
- * @tree: tree root
- * @value: node value
- * Return: pointer the removed node
+ * @last: pointer to the current node
+ * @tree: double pointer to the root node
+ * @flag: flag for exiting the balance check
+ * Return: void
  */
-avl_t *avl_search_remove(avl_t **tree, int value)
+void balance_check_avl(avl_t **tree, avl_t *last, avl_t *flag)
 {
-	avl_t *put_node;
-
-	if (tree && *tree && value < (*tree)->n)
+	while (last && last->parent)
 	{
-		put_node = avl_search_remove(&((*tree)->left), value);
-		check_balance_avl(tree, value);
-		return (put_node);
-	}
-	if (tree && *tree && value > (*tree)->n)
-	{
-		put_node = avl_search_remove(&((*tree)->right), value);
-		check_balance_avl(tree, value);
-		return (put_node);
-	}
-	if (tree && *tree)
-	{
-		if ((*tree)->left || (*tree)->right)
+		if (binary_tree_balance(last) == 0 && (binary_tree_balance(last->parent)
+		== -2 || binary_tree_balance(last->parent) == 2))
 		{
-			if ((*tree)->right)
-				put_node = inorder_sucessor((*tree)->right, 1);
+			if (last->parent->left && last->parent->left != last)
+				last = last->parent->left;
+			else if (last->parent->right)
+				last = last->parent->right;
+			else if (binary_tree_balance(last->parent) == 2)
+				flag = rotation(tree, last->parent, 1);
 			else
-				put_node = inorder_sucessor((*tree)->left, 2);
-			change_node(tree, &put_node);
-			free(*tree);
-			*tree = put_node;
+				flag = rotation(tree, last->parent, 0);
 		}
+		if (flag)
+			break;
+		if (binary_tree_balance(last) == 1 && binary_tree_balance(last->parent) == 2)
+			flag = rotation(tree, last->parent, 1);
+		else if (binary_tree_balance(last) == -1 &&
+		binary_tree_balance(last->parent) == -2)
+			flag = rotation(tree, last->parent, 0);
+		else if (binary_tree_balance(last) == -1 &&
+		binary_tree_balance(last->parent) == 2)
+			last = rotation(tree, last, 0), flag = rotation(tree, last->parent, 1);
+		else if (binary_tree_balance(last) == 1 &&
+		binary_tree_balance(last->parent) == -2)
+			last = rotation(tree, last, 1), flag = rotation(tree, last->parent, 0);
+		else if (binary_tree_balance(last) < 2 && binary_tree_balance(last) > -2)
+			last = last->parent;
 		else
 		{
-			put_node = *tree;
-			if ((*tree)->parent)
-			{
-				if ((*tree)->parent->left == (*tree))
-					(*tree)->parent->left = NULL;
-				else
-					(*tree)->parent->right = NULL;
-			}
-			free(put_node), *tree = NULL;
+			if (binary_tree_balance(last) > 0)
+				last = last->left;
+			else
+				last = last->right;
 		}
+		if (flag)
+			break;
 	}
-	return (*tree);
 }
 
-
 /**
- * avl_remove - removes a node in an AVL tree
- *
- * @root: tree root
- * @value: node value
- * Return: pointer to the new root
+ * in_order_successor - returns the successor node
+ * @root: root node
+ * @temp: double pointer to the node to be erased
+ * @successor: double pointer to the successor node
+ * @value: value of the node to be deleted
+ * Return: successor
  */
-avl_t *avl_remove(avl_t *root, int value)
+avl_t *in_order_successor(avl_t *root, avl_t **temp, avl_t **successor,
+int value)
 {
-	if (root == NULL)
+	*temp = root;
+	while (*temp)
+	{
+		if ((*temp)->n < value)
+			*temp = (*temp)->right;
+		else if ((*temp)->n > value)
+			*temp = (*temp)->left;
+		else if ((*temp)->n == value)
+			break;
+	}
+	if (!(*temp))
 		return (NULL);
 
-	avl_search_remove(&root, value);
+	if ((*temp)->right)
+	{
+		*successor = (*temp)->right;
+		while ((*successor)->left)
+			*successor = (*successor)->left;
+	}
+	else if ((*temp)->left)
+		*successor = (*temp)->left;
 
+	if (!*successor)
+	{
+		if (!(*temp)->parent)
+			root = NULL;
+		else if ((*temp)->n > (*temp)->parent->n)
+			(*temp)->parent->right = NULL;
+		else
+			(*temp)->parent->left = NULL;
+		balance_check_avl(&root, (*temp)->parent, NULL);
+		free(*temp);
+		return (NULL);
+	}
+	return (*successor);
+}
+/**
+ * successor_new_childs - sets the new childs for the successor
+ * @successor: successor node
+ * @temp: node to be deleted
+ * Return: void
+ */
+void successor_new_childs(bst_t *successor, bst_t *temp)
+{
+	if (successor->parent)
+	{
+		if (successor->parent->n > successor->n)
+			successor->parent->left = successor;
+		else
+			successor->parent->right = successor;
+	}
+	if (temp->left != successor)
+	{
+		successor->left = temp->left;
+		if (successor->left)
+			successor->left->parent = successor;
+	}
+	if (temp->right != successor)
+	{
+		successor->right = temp->right;
+		if (successor->right)
+			successor->right->parent = successor;
+	}
+}
+/**
+ * avl_remove - Searches a value in a AVL binary tree.
+ *
+ * @root: of a subtree.
+ * @value: value to search.
+ * Return: The root of the tree.
+ */
+
+avl_t *avl_remove(avl_t *root, int value)
+{
+	avl_t *successor = NULL, *temp = NULL, *flag = NULL;
+
+	if (!in_order_successor(root, &temp, &successor, value))
+		return (root);
+
+	if ((successor->right && temp->right) && successor != temp->right)
+	{
+		successor->right->parent = successor->parent;
+		if (successor->right->parent->n > successor->right->n)
+			successor->right->parent->left = successor->right;
+		else
+			successor->right->parent->right = successor->right;
+	}
+	else if (!successor->right && successor->parent != temp)
+		successor->parent->left = NULL;
+	successor->parent = temp->parent;
+	if (!successor->parent)
+		root = successor;
+	successor_new_childs(successor, temp), free(temp);
+	balance_check_avl(&root, successor, flag);
 	return (root);
 }
