@@ -1,174 +1,156 @@
 #include "binary_trees.h"
-
 /**
- * binary_tree_node - Insert a new node in the tree.
- *
- * @parent: Parent node.
- * @value: Value of the node.
- *
- * Return: Always 0 (Success)
+ * enqueue2 - insert a node at the end
+ * @head: head of queue
+ * @node: node to insert
+ * Return: pointer to newly created list element or NULL on failure
  */
-
-binary_tree_t *binary_tree_node(binary_tree_t *parent, int value)
+queue_t *enqueue2(queue_t **head, const binary_tree_t *node)
 {
-	binary_tree_t *new_node;
+	queue_t *new, *tmp;
 
-	new_node = malloc(sizeof(binary_tree_t));
-	if (new_node == NULL)
+	if (!node)
+		return (NULL); /*do not insert a null value*/
+
+	if (!head)
+		return (NULL); /*edge case we should not meet here*/
+
+	new = malloc(sizeof(queue_t));
+	if (!new)
+	{
+		while (*head)
+		{
+			tmp = *head;
+			*head = (*head)->next;
+			free(tmp);
+		}
 		return (NULL);
-	new_node->n = value;
-	new_node->left = NULL;
-	new_node->right = NULL;
-	new_node->parent = parent;
-	return (new_node);
+	}
+
+	new->node = (binary_tree_t *)node;
+	new->next = NULL;
+	if (!*head)
+	{
+		*head = new;
+	}
+	else
+	{
+		tmp = *head;
+		while (tmp->next)
+			tmp = tmp->next;
+		tmp->next = new;
+	}
+	return (new);
 }
 
 /**
- * check_new_root - checks the new root
- * @root: root
- * @new_root: new root
- * Return: node
+ * dequeue2 - return a node from the beginning
+ * @head: head of queue
+ * Return: a pointer to a binary tree node
  */
-heap_t *check_new_root(heap_t **root, heap_t *new_root)
+binary_tree_t *dequeue2(queue_t **head)
 {
-	heap_t *head, *current;
+	queue_t *tmp;
+	binary_tree_t *node;
 
-	current = *root;
-	while (1)
+	if (!head || !*head)
+		return (NULL);
+
+	tmp = *head;
+	*head = tmp->next;
+	node = tmp->node;
+	free(tmp);
+
+	return (node);
+}
+/**
+ * heapify_downward - basically performs a binary search downward
+ * and swaps when parent < child
+ * @tree: ptr to root
+ */
+void heapify_downward(heap_t *tree)
+{
+	int temp;
+
+	if (!tree || !(tree->right || tree->left))
+		return;
+	else if (!(tree->right))
 	{
-		if (binary_tree_balance(current))
-			current = current->left;
-		else if (!binary_tree_balance(current) && current->right)
-			current = current->right;
-		else if (!binary_tree_balance(current))
-			break;
-	}
-	new_root = current, head = *root;
-	if (new_root == head)
-		free(head), new_root = NULL;
-	else if (new_root->parent == head)
-	{
-		if (head->right == new_root)
+		if (tree->left->n > tree->n)
 		{
-			new_root->left = head->left, head->left->parent = new_root;
-			*root = new_root, free(head);
-		}
-		else
-		{
-			*root = new_root, free(head);
-			new_root->parent = NULL;
-			return (NULL);
+			temp = tree->n;
+			tree->n = tree->left->n;
+			tree->left->n = temp;
+			heapify_downward(tree->left);
+			return;
 		}
 	}
 	else
 	{
-		new_root->left = head->left, new_root->left->parent = new_root;
-		new_root->right = head->right, new_root->right->parent = new_root;
-		if (new_root->parent->right == new_root)
-			new_root->parent->right = NULL;
-		else
-			new_root->parent->left = NULL;
-		*root = new_root, free(head);
-	}
-	return (new_root);
-}
-/**
- * if_check - if statement
- * @new_root: new root
- * @tmp: position
- * @current: position
- * Return: void
- */
-void if_check(heap_t *new_root, heap_t *tmp, heap_t *current)
-{
-	if (new_root->right == tmp)
-	{
-		current = tmp->left, tmp->left = new_root->left;
-		if (tmp->left)
-			tmp->left->parent = tmp;
-		new_root->left = current;
-		if (new_root->left)
-			new_root->left->parent = new_root;
-		current = tmp->right, tmp->right = new_root;
-		new_root->right = current;
-	}
-	else
-	{
-		current = tmp->right, tmp->right = new_root->right;
-		if (tmp->right)
-			tmp->right->parent = tmp;
-		new_root->right = current;
-		if (new_root->right)
-			new_root->right->parent = new_root;
-		current = tmp->left, tmp->left = new_root;
-		new_root->left = current;
-	}
-}
-
-/**
- * loop_heap - loop
- * @root: root
- * @new_root: new root
- *
- * Return: void
- */
-void loop_heap(heap_t **root, heap_t *new_root)
-{
-	heap_t *tmp, *current = NULL;
-
-	while (new_root && (new_root->right || new_root->left))
-	{
-		if (new_root->right && new_root->left)
+		if (tree->left->n > tree->right->n && tree->n < tree->left->n)
 		{
-			if (new_root->right->n > new_root->left->n)
-				tmp = new_root->right;
-			else
-				tmp = new_root->left;
+			temp = tree->n;
+			tree->n = tree->left->n;
+			tree->left->n = temp;
+			heapify_downward(tree->left);
+			return;
 		}
-		else if (new_root->left)
-			tmp = new_root->left;
-		else
-			tmp = new_root->right;
-		if (tmp->n > new_root->n)
+		if (tree->left->n < tree->right->n && tree->n < tree->right->n)
 		{
-			if_check(new_root, tmp, current);
-		if (current)
-			current->parent = new_root;
-
-		tmp->parent = new_root->parent;
-		if (new_root->parent && new_root->parent->right == new_root)
-			new_root->parent->right = tmp;
-		else if (new_root->parent)
-			new_root->parent->left = tmp;
-		new_root->parent = tmp;
-		if (tmp && !tmp->parent)
-			*root = tmp;
+			temp = tree->n;
+			tree->n = tree->right->n;
+			tree->right->n = temp;
+			heapify_downward(tree->right);
+			return;
 		}
-		else
-			break;
 	}
 }
-
 /**
- * heap_extract - removes head
- * @root: root
- *
- * Return: value in root
+ * heap_extract - takes out "last" node and updates root
+ * basically, removes root of a max binary heap
+ * @root: ptr to root
+ * Return: value of root
  */
 int heap_extract(heap_t **root)
 {
-	heap_t *new_root = NULL;
+	queue_t *queue;
+	binary_tree_t *temp;
 	int value;
 
-	if (!*root)
+	if (!(*root))
 		return (0);
-
+	queue = NULL;
+	enqueue2(&queue, *root);
+	while (queue)
+	{
+		temp = dequeue2(&queue);
+		enqueue2(&queue, temp->left);
+		enqueue2(&queue, temp->right);
+	}
+	if (temp->parent)
+	{
+		if (temp->parent->left == temp)
+			temp->parent->left = NULL;
+		else
+			temp->parent->right = NULL;
+	}
+	temp->parent = NULL;
+	temp->right = (*root)->right;
+	if (temp->right)
+		temp->right->parent = temp;
+	temp->left = (*root)->left;
+	if (temp->left)
+		temp->left->parent = temp;
 	value = (*root)->n;
-	new_root = check_new_root(root, new_root);
-	if (!new_root)
-		return (value);
-	new_root->parent = NULL;
-
-	loop_heap(root, new_root);
+	if (*root == temp)
+	{
+		free(*root); *root = NULL;
+	}
+	else
+	{
+		free(*root);
+		*root = temp;
+		heapify_downward(temp);
+	}
 	return (value);
 }
